@@ -198,10 +198,10 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 		return err
 	}
 
+	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
 	if t.UseInterface {
 		f.WriteString("declare namespace " + t.Namespace + " {\n")
 	}
-	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
 	f.WriteString(converted)
 
 	if t.UseInterface {
@@ -309,10 +309,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		result += fmt.Sprintf("%s}\n\n", t.Indent)
 	}
 
-	if customCode != nil {
-		code := customCode[entityName]
-		result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
-	}
+	//if customCode != nil {
+	//	code := customCode[entityName]
+	//	result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
+	//}
 
 	result += "}"
 
@@ -334,11 +334,11 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 	if len(fieldName) > 0 {
 		customTSType := field.Tag.Get(tsType)
 		if len(customTSType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
+			t.fields += fmt.Sprintf("%s%s?: %s;\n", t.indent, fieldName, customTSType)
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
 		} else if len(typeScriptType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, typeScriptType, strings.Repeat("[]", arrayDepth))
+			t.fields += fmt.Sprintf("%s%s?: %s%s;\n", t.indent, fieldName, typeScriptType, strings.Repeat("[]", arrayDepth))
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
 		}
@@ -359,7 +359,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 	customTransformation := field.Tag.Get(tsTransformTag)
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
-		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
+		t.fields += fmt.Sprintf("%s%s?: %s;\n", t.indent, fieldName, typeScriptType)
 		if customTransformation == "" {
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 		} else {
@@ -375,12 +375,12 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
-	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
+	t.fields += fmt.Sprintf("%s%s?: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, t.prefix+fieldType+t.suffix, fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
-	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth))
+	t.fields += fmt.Sprintf("%s%s?: %s%s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth))
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, t.prefix+fieldType+t.suffix)
 }
