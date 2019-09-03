@@ -26,11 +26,16 @@ type TypeScriptify struct {
 	UseInterface     bool
 	Namespace        string
 
-	golangTypes []reflect.Type
+	golangTypes []TypeInfo
 	types       map[reflect.Kind]string
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
+}
+
+type TypeInfo struct {
+	golangType reflect.Type
+	extends    string
 }
 
 func New() *TypeScriptify {
@@ -92,20 +97,20 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-func (t *TypeScriptify) Add(obj interface{}) {
-	t.AddType(reflect.TypeOf(obj))
+func (t *TypeScriptify) Add(obj interface{}, extends string) {
+	t.AddType(reflect.TypeOf(obj), extends)
 }
 
-func (t *TypeScriptify) AddType(typeOf reflect.Type) {
-	t.golangTypes = append(t.golangTypes, typeOf)
+func (t *TypeScriptify) AddType(typeOf reflect.Type, extends string) {
+	t.golangTypes = append(t.golangTypes, TypeInfo{typeOf, extends})
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
-	for _, typeof := range t.golangTypes {
-		typeScriptCode, err := t.convertType(typeof, customCode)
+	for _, typeInfo := range t.golangTypes {
+		typeScriptCode, err := t.convertType(typeInfo, customCode)
 		if err != nil {
 			return "", err
 		}
@@ -214,16 +219,20 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
-func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
-	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
+func (t *TypeScriptify) convertType(ti TypeInfo, customCode map[string]string) (string, error) {
+	if _, found := t.alreadyConverted[ti.golangType]; found { // Already converted
 		return "", nil
 	}
-	t.alreadyConverted[typeOf] = true
+	t.alreadyConverted[ti.golangType] = true
 
 	var result string
-	entityName := t.Prefix + typeOf.Name() + t.Suffix
+	entityName := t.Prefix + ti.golangType.Name() + t.Suffix
 	if t.UseInterface {
-		result = fmt.Sprintf("interface %s {\n", entityName)
+		if len(ti.extends) != 0 {
+			result = fmt.Sprintf("interface %s extends %s {\n", entityName, ti.extends)
+		} else {
+			result = fmt.Sprintf("interface %s {\n", entityName)
+		}
 	} else {
 		result = fmt.Sprintf("class %s {\n", entityName)
 		if !t.DontExport {
@@ -237,7 +246,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		suffix: t.Suffix,
 	}
 
-	fields := deepFields(typeOf)
+	fields := deepFields(ti.golangType)
 	for _, field := range fields {
 		if field.Type.Kind() == reflect.Ptr {
 			field.Type = field.Type.Elem()
@@ -258,15 +267,15 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if customTSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := t.convertType(field.Type, customCode)
-				if err != nil {
-					return "", err
-				}
-				if typeScriptChunk != "" {
-					result = typeScriptChunk + "\n" + result
-				}
-				builder.AddStructField(jsonFieldName, field)
+				//} else if field.Type.Kind() == reflect.Struct { // Struct:
+				//typeScriptChunk, err := t.convertType(field.Type, customCode)
+				//if err != nil {
+				//	return "", err
+				//}
+				//if typeScriptChunk != "" {
+				//	result = typeScriptChunk + "\n" + result
+				//}
+				//builder.AddStructField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 					field.Type = field.Type.Elem()
@@ -278,18 +287,19 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					arrayDepth++
 				}
 
-				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
-					if err != nil {
-						return "", err
-					}
-					if typeScriptChunk != "" {
-						result = typeScriptChunk + "\n" + result
-					}
-					builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
-				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
-				}
+				//if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
+				//	typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
+				//	if err != nil {
+				//		return "", err
+				//	}
+				//	if typeScriptChunk != "" {
+				//		result = typeScriptChunk + "\n" + result
+				//	}
+				//	builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
+				//} else { // Slice of simple fields:
+				//	err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
+				//}
+				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
 			}
