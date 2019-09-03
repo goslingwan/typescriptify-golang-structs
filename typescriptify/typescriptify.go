@@ -267,7 +267,7 @@ func (t *TypeScriptify) convertType(ti TypeInfo, customCode map[string]string) (
 				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if customTSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field)
-				//} else if field.Type.Kind() == reflect.Struct { // Struct:
+			} else if field.Type.Kind() == reflect.Struct { // Struct:
 				//typeScriptChunk, err := t.convertType(field.Type, customCode)
 				//if err != nil {
 				//	return "", err
@@ -275,7 +275,7 @@ func (t *TypeScriptify) convertType(ti TypeInfo, customCode map[string]string) (
 				//if typeScriptChunk != "" {
 				//	result = typeScriptChunk + "\n" + result
 				//}
-				//builder.AddStructField(jsonFieldName, field)
+				builder.AddStructField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 					field.Type = field.Type.Elem()
@@ -287,18 +287,18 @@ func (t *TypeScriptify) convertType(ti TypeInfo, customCode map[string]string) (
 					arrayDepth++
 				}
 
-				//if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-				//	typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
-				//	if err != nil {
-				//		return "", err
-				//	}
-				//	if typeScriptChunk != "" {
-				//		result = typeScriptChunk + "\n" + result
-				//	}
-				//	builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
-				//} else { // Slice of simple fields:
-				//	err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
-				//}
+				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
+					//typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
+					//if err != nil {
+					//	return "", err
+					//}
+					//if typeScriptChunk != "" {
+					//	result = typeScriptChunk + "\n" + result
+					//}
+					builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
+				} else { // Slice of simple fields:
+					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
+				}
 				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
