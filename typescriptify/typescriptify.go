@@ -23,6 +23,8 @@ type TypeScriptify struct {
 	CreateFromMethod bool
 	BackupDir        string // If empty no backup
 	DontExport       bool
+	UseInterface     bool
+	Namespace        string
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -196,8 +198,15 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 		return err
 	}
 
+	if t.UseInterface {
+		f.WriteString("declare namespace " + t.Namespace + " {\n")
+	}
 	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
 	f.WriteString(converted)
+
+	if t.UseInterface {
+		f.WriteString("\n}")
+	}
 	if err != nil {
 		return err
 	}
@@ -211,10 +220,15 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 	t.alreadyConverted[typeOf] = true
 
+	var result string
 	entityName := t.Prefix + typeOf.Name() + t.Suffix
-	result := fmt.Sprintf("class %s {\n", entityName)
-	if !t.DontExport {
-		result = "export " + result
+	if t.UseInterface {
+		result = fmt.Sprintf("interface %s {\n", entityName)
+	} else {
+		result = fmt.Sprintf("class %s {\n", entityName)
+		if !t.DontExport {
+			result = "export " + result
+		}
 	}
 	builder := typeScriptClassBuilder{
 		types:  t.types,

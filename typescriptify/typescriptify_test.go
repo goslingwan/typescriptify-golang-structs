@@ -128,6 +128,8 @@ func TestWithPrefixes(t *testing.T) {
 	converter.DontExport = true
 	converter.BackupDir = ""
 	converter.CreateFromMethod = true
+	converter.UseInterface = true
+	converter.Namespace = "AAAA"
 
 	desiredResult := `class test_Dummy_test {
     something: string;
