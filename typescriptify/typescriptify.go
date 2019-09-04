@@ -299,7 +299,6 @@ func (t *TypeScriptify) convertType(ti TypeInfo, customCode map[string]string) (
 				} else { // Slice of simple fields:
 					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 				}
-				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
 			}
